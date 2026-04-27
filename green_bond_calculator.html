@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Green Bond Price Calculator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0f1117;
+    color: #e8e8e8;
+    min-height: 100vh;
+    padding: 2rem;
+  }
+  h1 {
+    font-size: 1.4rem;
+    font-weight: 500;
+    color: #fff;
+    margin-bottom: 0.25rem;
+  }
+  .subtitle {
+    font-size: 0.85rem;
+    color: #888;
+    margin-bottom: 1.75rem;
+  }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+  .metric {
+    background: #1a1d27;
+    border: 0.5px solid #2a2d3a;
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+  }
+  .metric-label {
+    font-size: 12px;
+    color: #888;
+    margin-bottom: 6px;
+  }
+  .metric-value {
+    font-size: 1.6rem;
+    font-weight: 500;
+    color: #fff;
+  }
+  .metric-value.up   { color: #34d399; }
+  .metric-value.down { color: #f87171; }
+  .metric-value.flat { color: #fff; }
+
+  .controls {
+    background: #1a1d27;
+    border: 0.5px solid #2a2d3a;
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+  .control-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .control-row:last-child { margin-bottom: 0; }
+  .control-label {
+    font-size: 13px;
+    color: #aaa;
+    min-width: 140px;
+  }
+  input[type=range] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: #2a2d3a;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: #1D9E75;
+    cursor: pointer;
+    border: 2px solid #0f1117;
+  }
+  .control-val {
+    font-size: 13px;
+    font-weight: 500;
+    color: #e8e8e8;
+    min-width: 52px;
+    text-align: right;
+  }
+
+  .section-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: #888;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .formula-box {
+    background: #1a1d27;
+    border: 0.5px solid #2a2d3a;
+    border-left: 3px solid #1D9E75;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: #ccc;
+    margin-bottom: 1.25rem;
+    line-height: 1.6;
+  }
+  .formula-box span { color: #34d399; font-weight: 500; }
+
+  .chart-wrap {
+    background: #1a1d27;
+    border: 0.5px solid #2a2d3a;
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem 1rem;
+    margin-bottom: 1.25rem;
+  }
+  .chart-inner { position: relative; height: 220px; }
+
+  .legend {
+    display: flex;
+    gap: 20px;
+    font-size: 12px;
+    color: #888;
+    margin-top: 10px;
+  }
+  .legend span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .dot {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  .greenium-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: #1a1d27;
+    border: 0.5px solid #2a2d3a;
+    border-radius: 10px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+  .greenium-label { font-size: 13px; color: #aaa; min-width: 140px; }
+  .greenium-badge {
+    background: rgba(29,158,117,0.15);
+    color: #34d399;
+    border: 0.5px solid #1D9E75;
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .greenium-explain {
+    font-size: 12px;
+    color: #666;
+    margin-left: auto;
+  }
+
+  .note {
+    font-size: 12px;
+    color: #555;
+    text-align: center;
+    padding-top: 0.5rem;
+  }
+
+  @media (max-width: 600px) {
+    .grid-3 { grid-template-columns: 1fr; }
+    .grid-2 { grid-template-columns: 1fr; }
+    body { padding: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Green Bond Price Calculator</h1>
+<p class="subtitle">Adjust coupon rate, discount rate, and maturity to see how present value and the greenium change.</p>
+
+<div class="grid-2">
+  <div class="metric">
+    <div class="metric-label">Bond face value</div>
+    <div class="metric-value flat">$1,000.00</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">Current price (PV)</div>
+    <div class="metric-value" id="price-out">$1,000.00</div>
+  </div>
+</div>
+
+<div class="controls">
+  <div class="section-title">Bond parameters</div>
+  <div class="control-row">
+    <span class="control-label">Coupon rate</span>
+    <input type="range" id="coupon" min="0.5" max="10" step="0.25" value="4">
+    <span class="control-val" id="coupon-val">4.00%</span>
+  </div>
+  <div class="control-row">
+    <span class="control-label">Discount rate (r)</span>
+    <input type="range" id="rate" min="0.5" max="10" step="0.25" value="4">
+    <span class="control-val" id="rate-val">4.00%</span>
+  </div>
+  <div class="control-row">
+    <span class="control-label">Maturity (years)</span>
+    <input type="range" id="maturity" min="1" max="30" step="1" value="10">
+    <span class="control-val" id="maturity-val">10 yr</span>
+  </div>
+</div>
+
+<div class="formula-box" id="formula-line">
+  PV = <span>Σ $40 / (1.04)<sup>t</sup></span> + <span>$1000 / (1.04)<sup>10</sup></span>
+</div>
+
+<div class="chart-wrap">
+  <div class="section-title">Discounted cash flows by year</div>
+  <div class="chart-inner">
+    <canvas id="cfChart" role="img" aria-label="Stacked bar chart of discounted coupon and principal cash flows by year"></canvas>
+  </div>
+  <div class="legend">
+    <span><span class="dot" style="background:#1D9E75"></span>Coupon payments (PV)</span>
+    <span><span class="dot" style="background:#534AB7"></span>Principal at maturity (PV)</span>
+  </div>
+</div>
+
+<div class="greenium-row">
+  <span class="greenium-label">The greenium</span>
+  <span class="greenium-badge" id="greenium-out">−7 bps vs conventional</span>
+  <span class="greenium-explain">Investors accept ~5–15 bps lower yield on green bonds</span>
+</div>
+
+<div class="grid-3">
+  <div class="metric">
+    <div class="metric-label">Annual coupon ($)</div>
+    <div class="metric-value" id="coupon-dollar">$40</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">Total coupons (PV)</div>
+    <div class="metric-value" id="coupon-pv">—</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">Principal (PV)</div>
+    <div class="metric-value" id="principal-pv">—</div>
+  </div>
+</div>
+
+<p class="note">This calculator is for educational purposes. Based on standard fixed-rate bond pricing: PV = Σ [C/(1+r)^t] + [F/(1+r)^T]</p>
+
+<script>
+let chart;
+
+function update() {
+  const coupon   = parseFloat(document.getElementById('coupon').value) / 100;
+  const rate     = parseFloat(document.getElementById('rate').value) / 100;
+  const T        = parseInt(document.getElementById('maturity').value);
+  const face     = 1000;
+  const pmt      = face * coupon;
+
+  document.getElementById('coupon-val').textContent   = (coupon * 100).toFixed(2) + '%';
+  document.getElementById('rate-val').textContent     = (rate * 100).toFixed(2) + '%';
+  document.getElementById('maturity-val').textContent = T + ' yr';
+  document.getElementById('coupon-dollar').textContent = '$' + pmt.toFixed(0);
+
+  const couponPVs = [], principalPVs = [], labels = [];
+  let totalCouponPV = 0, principalPV = 0;
+
+  for (let t = 1; t <= T; t++) {
+    const d = Math.pow(1 + rate, t);
+    const cpv = pmt / d;
+    const ppv = (t === T) ? face / d : 0;
+    couponPVs.push(parseFloat(cpv.toFixed(2)));
+    principalPVs.push(parseFloat(ppv.toFixed(2)));
+    totalCouponPV += cpv;
+    if (t === T) principalPV = ppv;
+    labels.push(T <= 15 ? 'Yr ' + t : (t % 5 === 0 ? 'Yr ' + t : ''));
+  }
+
+  const totalPV = totalCouponPV + principalPV;
+  const priceEl = document.getElementById('price-out');
+  priceEl.textContent = '$' + totalPV.toFixed(2);
+  priceEl.className = 'metric-value ' + (totalPV > face + 0.5 ? 'up' : totalPV < face - 0.5 ? 'down' : 'flat');
+
+  document.getElementById('coupon-pv').textContent = '$' + totalCouponPV.toFixed(2);
+  document.getElementById('principal-pv').textContent = '$' + principalPV.toFixed(2);
+
+  // Greenium sim: conventional yield = rate + small spread
+  const greeniumBps = Math.round(5 + (rate * 100) * 0.3);
+  document.getElementById('greenium-out').textContent = '−' + greeniumBps + ' bps vs conventional';
+
+  document.getElementById('formula-line').innerHTML =
+    'PV = <span>Σ $' + pmt.toFixed(0) + ' / (1 + ' + (rate*100).toFixed(2) + '%)<sup>t</sup></span>' +
+    ' + <span>$1000 / (1 + ' + (rate*100).toFixed(2) + '%)<sup>' + T + '</sup></span>' +
+    ' = <span>$' + totalPV.toFixed(2) + '</span>';
+
+  if (chart) {
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = couponPVs;
+    chart.data.datasets[1].data = principalPVs;
+    chart.update();
+  } else {
+    chart = new Chart(document.getElementById('cfChart'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Coupon PV',    data: couponPVs,    backgroundColor: '#1D9E75', stack: 's' },
+          { label: 'Principal PV', data: principalPVs, backgroundColor: '#534AB7', stack: 's' }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { stacked: true, grid: { color: '#1e2130' }, ticks: { color: '#666', font: { size: 11 } } },
+          y: { stacked: true, grid: { color: '#1e2130' }, ticks: { color: '#666', font: { size: 11 }, callback: v => '$' + v } }
+        }
+      }
+    });
+  }
+}
+
+['coupon','rate','maturity'].forEach(id => {
+  document.getElementById(id).addEventListener('input', update);
+});
+update();
+</script>
+</body>
+</html>
